@@ -61,15 +61,12 @@ class _VideoPlayerWithControlsState extends State<PlayerWithControls> {
         children: <Widget>[
           widget.placeholder ?? new Container(),
           new Center(
-            child: new Hero(
-              tag: controller,
-              child: widget.fullScreen
-                  ? VideoPlayer(controller)
-                  : AspectRatio(
-                      aspectRatio: widget.aspectRatio,
-                      child: new VideoPlayer(controller),
-                    ),
-            ),
+            child: widget.fullScreen
+                ? VideoPlayer(controller)
+                : AspectRatio(
+                    aspectRatio: widget.aspectRatio,
+                    child: new VideoPlayer(controller),
+                  ),
           ),
           _buildControls(context, controller),
         ],
