@@ -14,6 +14,11 @@ class MaterialControls extends StatefulWidget {
   final ChewieProgressColors progressColors;
   final bool autoPlay;
   final bool isLive;
+  final iconSize = 20.0;
+  final barHeight = 30.0;
+  final buttonPadding = 24.0;
+  Color backgroundColor = new Color.fromRGBO(41, 41, 41, 0.7);
+  final iconColor = Colors.white;
 
   MaterialControls({
     @required this.controller,
@@ -38,27 +43,22 @@ class _MaterialControlsState extends State<MaterialControls> {
   Timer _showTimer;
   Timer _showAfterExpandCollapseTimer;
   bool _dragging = false;
-
-  final barHeight = 48.0;
   final marginSize = 5.0;
 
   @override
   Widget build(BuildContext context) {
-    return new Column(
-      children: <Widget>[
-        _latestValue != null &&
-                    !_latestValue.isPlaying &&
-                    _latestValue.duration == null ||
-                _latestValue.isBuffering
-            ? Expanded(
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            : _buildHitArea(),
-        _buildBottomBar(context, widget.controller),
-      ],
-    );
+    return _latestValue != null &&
+                !_latestValue.isPlaying &&
+                _latestValue.duration == null ||
+            _latestValue.isBuffering
+        ? Container()
+        : Column(
+            children: <Widget>[
+              _buildTopBar(widget.controller),
+              _buildHitArea(),
+              _buildBottomBar(context, widget.controller),
+            ],
+          );
   }
 
   @override
@@ -90,26 +90,43 @@ class _MaterialControlsState extends State<MaterialControls> {
     }
   }
 
+  Widget _buildTopBar(
+    VideoPlayerController controller,
+  ) {
+    return new Container(
+      height: widget.barHeight,
+      margin: new EdgeInsets.only(
+        top: 25.0,
+        right: marginSize,
+        left: marginSize,
+      ),
+      child: new Row(
+        children: <Widget>[
+          _buildBackButton(),
+          Expanded(child: new Container()),
+          _buildMuteButton(controller),
+        ],
+      ),
+    );
+  }
+
   AnimatedOpacity _buildBottomBar(
     BuildContext context,
     VideoPlayerController controller,
   ) {
-    final iconColor = Theme.of(context).textTheme.button.color;
-
     return new AnimatedOpacity(
       opacity: _hideStuff ? 0.0 : 1.0,
       duration: new Duration(milliseconds: 300),
       child: new Container(
-        height: barHeight,
-        color: Theme.of(context).dialogBackgroundColor,
+        height: widget.barHeight,
+        color: widget.backgroundColor,
         child: new Row(
           children: <Widget>[
             _buildPlayPause(controller),
+            widget.isLive ? const SizedBox() : _buildProgressBar(),
             widget.isLive
                 ? Expanded(child: const Text('LIVE'))
-                : _buildPosition(iconColor),
-            widget.isLive ? const SizedBox() : _buildProgressBar(),
-            _buildMuteButton(controller),
+                : _buildPosition(),
             _buildExpandButton(),
           ],
         ),
@@ -124,7 +141,7 @@ class _MaterialControlsState extends State<MaterialControls> {
         opacity: _hideStuff ? 0.0 : 1.0,
         duration: new Duration(milliseconds: 300),
         child: new Container(
-          height: barHeight,
+          height: widget.barHeight,
           margin: new EdgeInsets.only(right: 12.0),
           padding: new EdgeInsets.only(
             left: 8.0,
@@ -133,6 +150,8 @@ class _MaterialControlsState extends State<MaterialControls> {
           child: new Center(
             child: new Icon(
               widget.fullScreen ? Icons.fullscreen_exit : Icons.fullscreen,
+              color: widget.iconColor,
+              size: widget.iconSize + 10,
             ),
           ),
         ),
@@ -140,39 +159,147 @@ class _MaterialControlsState extends State<MaterialControls> {
     );
   }
 
+  Offset start;
+  Offset end;
+
+  bool horizontalDragging() {
+    if (start == null || end == null) return false;
+    return (end.dx.toInt() - start.dx.toInt()).abs() >
+        (end.dy.toInt() - start.dy.toInt()).abs();
+  }
+
+  bool verticalDragging() {
+    if (start == null || end == null) return false;
+    return (end.dx.toInt() - start.dx.toInt()).abs() <
+        (end.dy.toInt() - start.dy.toInt()).abs();
+  }
+
+  bool horizontalForward() {
+    return end.dx.toInt() - start.dx.toInt() > 0;
+  }
+
+  Duration calculatePosition() {
+    var val = widget.controller.value;
+    int offset = end.dx.toInt() - start.dx.toInt();
+    int position = val.position.inSeconds + offset;
+    return Duration(
+        seconds: position = position < 0
+            ? 0
+            : (position > val.duration.inSeconds
+                ? val.duration.inSeconds - 1
+                : position));
+  }
+
   Expanded _buildHitArea() {
-    return new Expanded(
+    return Expanded(
       child: new GestureDetector(
         onTap: _latestValue != null && _latestValue.isPlaying
             ? _cancelAndRestartTimer
             : () {
-                _playPause();
+                _hideTimer?.cancel();
 
                 setState(() {
-                  _hideStuff = true;
+                  _hideStuff = false;
                 });
               },
+        onHorizontalDragStart: (details) {
+          if (!widget.controller.value.initialized) {
+            return;
+          }
+        },
+        onHorizontalDragEnd: (detail) {
+          if (!widget.controller.value.initialized) {
+            return;
+          }
+          if (horizontalDragging()) {
+            Duration position = calculatePosition();
+            widget.controller.seekTo(position);
+          }
+          start = null;
+          end = null;
+          if (!widget.controller.value.isPlaying) {
+            widget.controller.play();
+          }
+        },
+        onHorizontalDragUpdate: (detail) {
+          if (!widget.controller.value.initialized) {
+            return;
+          }
+
+          if (start == null) start = detail.globalPosition;
+          end = detail.globalPosition;
+          if (horizontalDragging()) {
+            if (widget.controller.value.isPlaying) {
+              widget.controller.pause();
+            }
+            setState(() {});
+          }
+        },
         child: new Container(
           color: Colors.transparent,
-          child: new Center(
-            child: new AnimatedOpacity(
-              opacity:
-                  _latestValue != null && !_latestValue.isPlaying && !_dragging
-                      ? 1.0
-                      : 0.0,
-              duration: new Duration(milliseconds: 300),
-              child: new GestureDetector(
-                child: new Container(
-                  decoration: new BoxDecoration(
-                    color: Theme.of(context).dialogBackgroundColor,
-                    borderRadius: new BorderRadius.circular(48.0),
-                  ),
-                  child: new Padding(
-                    padding: new EdgeInsets.all(12.0),
-                    child: new Icon(Icons.play_arrow, size: 32.0),
-                  ),
-                ),
-              ),
+          child: Center(
+            child: horizontalDragging()
+                ? Opacity(
+                    opacity: 0.5,
+                    child: Container(
+                      alignment: AlignmentDirectional.center,
+                      width: 70.0,
+                      height: 70.0,
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(15.0),
+                      ),
+                      child: Column(
+                        children: <Widget>[
+                          Icon(
+                            horizontalForward() ? Icons.fast_forward : Icons.fast_rewind,
+                            color: widget.iconColor,
+                            size: 40.0,
+                          ),
+                          Expanded(
+                            child: Text(
+                              "${formatDuration(calculatePosition())}",
+                              style: TextStyle(color: widget.iconColor),
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  )
+                : Container(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  GestureDetector _buildBackButton() {
+    return new GestureDetector(
+      onTap: () {
+        _cancelAndRestartTimer();
+        if (widget.fullScreen)
+          widget.onExpandCollapse();
+        else
+          Navigator.of(context, rootNavigator: true).pop(context);
+      },
+      child: new AnimatedOpacity(
+        opacity: _hideStuff ? 0.0 : 1.0,
+        duration: new Duration(milliseconds: 300),
+        child: new Container(
+          decoration: new BoxDecoration(
+            color: widget.backgroundColor,
+            shape: BoxShape.circle,
+          ),
+          child: new Container(
+            height: widget.barHeight,
+            padding: new EdgeInsets.only(
+              left: widget.buttonPadding,
+              right: widget.buttonPadding,
+            ),
+            child: new Icon(
+              Icons.chevron_left,
+              color: widget.iconColor,
+              size: widget.iconSize,
             ),
           ),
         ),
@@ -197,19 +324,21 @@ class _MaterialControlsState extends State<MaterialControls> {
       child: new AnimatedOpacity(
         opacity: _hideStuff ? 0.0 : 1.0,
         duration: new Duration(milliseconds: 300),
-        child: new ClipRect(
+        child: new Container(
+          decoration: new BoxDecoration(
+            color: widget.backgroundColor,
+            shape: BoxShape.circle,
+          ),
           child: new Container(
-            child: new Container(
-              height: barHeight,
-              padding: new EdgeInsets.only(
-                left: 8.0,
-                right: 8.0,
-              ),
-              child: new Icon(
-                (_latestValue != null && _latestValue.volume > 0)
-                    ? Icons.volume_up
-                    : Icons.volume_off,
-              ),
+            height: widget.barHeight,
+            padding: new EdgeInsets.only(
+                left: widget.buttonPadding, right: widget.buttonPadding),
+            child: new Icon(
+              (_latestValue != null && _latestValue.volume > 0)
+                  ? Icons.volume_up
+                  : Icons.volume_off,
+              color: widget.iconColor,
+              size: widget.iconSize,
             ),
           ),
         ),
@@ -221,7 +350,7 @@ class _MaterialControlsState extends State<MaterialControls> {
     return new GestureDetector(
       onTap: _playPause,
       child: new Container(
-        height: barHeight,
+        height: widget.barHeight,
         color: Colors.transparent,
         margin: new EdgeInsets.only(left: 8.0, right: 4.0),
         padding: new EdgeInsets.only(
@@ -230,12 +359,14 @@ class _MaterialControlsState extends State<MaterialControls> {
         ),
         child: new Icon(
           controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+          color: widget.iconColor,
+          size: widget.iconSize + 10,
         ),
       ),
     );
   }
 
-  Widget _buildPosition(Color iconColor) {
+  Widget _buildPosition() {
     final position = _latestValue != null && _latestValue.position != null
         ? _latestValue.position
         : Duration.zero;
@@ -244,12 +375,10 @@ class _MaterialControlsState extends State<MaterialControls> {
         : Duration.zero;
 
     return new Padding(
-      padding: new EdgeInsets.only(right: 24.0),
+      padding: new EdgeInsets.only(right: 10.0),
       child: new Text(
         '${formatDuration(position)} / ${formatDuration(duration)}',
-        style: new TextStyle(
-          fontSize: 14.0,
-        ),
+        style: new TextStyle(fontSize: 14.0, color: widget.iconColor),
       ),
     );
   }
@@ -351,11 +480,12 @@ class _MaterialControlsState extends State<MaterialControls> {
             _startHideTimer();
           },
           colors: widget.progressColors ??
-              new ChewieProgressColors(
-                  playedColor: Theme.of(context).accentColor,
-                  handleColor: Theme.of(context).accentColor,
-                  bufferedColor: Theme.of(context).backgroundColor,
-                  backgroundColor: Theme.of(context).disabledColor),
+              ChewieProgressColors(
+                playedColor: new Color.fromARGB(120, 255, 255, 255),
+                handleColor: new Color.fromARGB(255, 255, 255, 255),
+                bufferedColor: new Color.fromARGB(60, 255, 255, 255),
+                backgroundColor: new Color.fromARGB(20, 255, 255, 255),
+              ),
         ),
       ),
     );
