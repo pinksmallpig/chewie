@@ -82,6 +82,13 @@ class _ChewiePlayerState extends State<Chewie> {
   VideoPlayerController _controller;
   bool _isFullScreen = false;
 
+  static const portraitPlatform = const MethodChannel(
+    "chewie/setOrientationPortrait",
+  );
+  static const landscapeRightPlatform = const MethodChannel(
+    "chewie/setOrientationLandscapeRight",
+  );
+
   @override
   Widget build(BuildContext context) {
     return new PlayerWithControls(
@@ -179,18 +186,18 @@ class _ChewiePlayerState extends State<Chewie> {
   }
 
   Future<dynamic> _pushFullScreenWidget(BuildContext context) async {
-    final isAndroid = Theme.of(context).platform == TargetPlatform.android;
+    final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
     final TransitionRoute<Null> route = new PageRouteBuilder<Null>(
       settings: new RouteSettings(isInitialRoute: false),
       pageBuilder: _fullScreenRoutePageBuilder,
     );
 
     SystemChrome.setEnabledSystemUIOverlays([]);
-    if (isAndroid) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeRight,
+    ]);
+    if (isIOS) {
+      landscapeRightPlatform.invokeMethod("setOrientationLandscapeRight");
     }
 
     if (!widget.allowedScreenSleep) {
@@ -198,7 +205,6 @@ class _ChewiePlayerState extends State<Chewie> {
     }
 
     await Navigator.of(context).push(route);
-
     bool isKeptOn = await Screen.isKeptOn;
     if (isKeptOn) {
       Screen.keepOn(false);
@@ -207,10 +213,10 @@ class _ChewiePlayerState extends State<Chewie> {
     SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
     ]);
+    if (isIOS) {
+      portraitPlatform.invokeMethod("setOrientationPortrait");
+    }
   }
 
   double _calculateAspectRatio(BuildContext context) {

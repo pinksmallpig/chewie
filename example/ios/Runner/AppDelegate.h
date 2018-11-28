@@ -3,4 +3,8 @@
 
 @interface AppDelegate : FlutterAppDelegate
 
++ (void)setOrientationPortrait;
+
++ (void)setOrientationLandscapeRight;
+
 @end
