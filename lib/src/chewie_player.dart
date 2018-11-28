@@ -191,12 +191,13 @@ class _ChewiePlayerState extends State<Chewie> {
       settings: new RouteSettings(isInitialRoute: false),
       pageBuilder: _fullScreenRoutePageBuilder,
     );
-
+    bool isVertical =
+        _controller.value.size.width < _controller.value.size.height;
     SystemChrome.setEnabledSystemUIOverlays([]);
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeRight,
     ]);
-    if (isIOS) {
+    if (isIOS && !isVertical) {
       landscapeRightPlatform.invokeMethod("setOrientationLandscapeRight");
     }
 
@@ -214,7 +215,7 @@ class _ChewiePlayerState extends State<Chewie> {
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
     ]);
-    if (isIOS) {
+    if (isIOS && !isVertical) {
       portraitPlatform.invokeMethod("setOrientationPortrait");
     }
   }
