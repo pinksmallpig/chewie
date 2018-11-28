@@ -4,6 +4,7 @@ import 'package:chewie/src/chewie_progress_colors.dart';
 import 'package:chewie/src/material_controls.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 class PlayerWithControls extends StatefulWidget {
@@ -40,37 +41,30 @@ class _VideoPlayerWithControlsState extends State<PlayerWithControls> {
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
-
-    return new Center(
-      child: new Container(
-        width: MediaQuery.of(context).size.width,
-        child: widget.fullScreen
-            ? _buildPlayerWithControls(controller, context)
-            : AspectRatio(
-                aspectRatio: widget.aspectRatio,
-                child: _buildPlayerWithControls(controller, context),
-              ),
-      ),
-    );
+    return _buildPlayerWithControls(controller, context);
   }
 
-  Container _buildPlayerWithControls(
+  Widget _buildPlayerWithControls(
       VideoPlayerController controller, BuildContext context) {
-    return new Container(
-      child: new Stack(
-        children: <Widget>[
-          widget.placeholder ?? new Container(),
-          new Center(
-            child: widget.fullScreen
-                ? VideoPlayer(controller)
-                : AspectRatio(
-                    aspectRatio: widget.aspectRatio,
-                    child: new VideoPlayer(controller),
-                  ),
+    VideoPlayer videoPlayer = VideoPlayer(controller);
+    var ctx = MediaQuery.of(context);
+    if (!controller.value.initialized)
+      return widget.placeholder ?? CircularProgressIndicator();
+    return Stack(
+      children: <Widget>[
+        Center(
+          child: FittedBox(
+            child: Container(
+              width: controller.value.size.width,
+              height: controller.value.size.height,
+              child: ctx.orientation == Orientation.landscape
+                  ? videoPlayer
+                  : Hero(tag: controller, child: videoPlayer),
+            ),
           ),
-          _buildControls(context, controller),
-        ],
-      ),
+        ),
+        _buildControls(context, controller),
+      ],
     );
   }
 
