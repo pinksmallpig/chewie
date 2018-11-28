@@ -195,6 +195,7 @@ class _ChewiePlayerState extends State<Chewie> {
         _controller.value.size.width < _controller.value.size.height;
     SystemChrome.setEnabledSystemUIOverlays([]);
     SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
     if (isIOS && !isVertical) {
