@@ -37,10 +37,6 @@ class Chewie extends StatefulWidget {
   /// Will fallback to fitting within the space allowed.
   final double aspectRatio;
 
-  /// The colors to use for controls on iOS. By default, the iOS player uses
-  /// colors sampled from the original iOS 11 designs.
-  final ChewieProgressColors cupertinoProgressColors;
-
   /// The colors to use for the Material Progress Bar. By default, the Material
   /// player uses the colors from your Theme.
   final ChewieProgressColors materialProgressColors;
@@ -67,7 +63,6 @@ class Chewie extends StatefulWidget {
     this.startAt,
     this.looping = false,
     this.fullScreenByDefault = false,
-    this.cupertinoProgressColors,
     this.materialProgressColors,
     this.placeholder,
     this.showControls = true,
@@ -93,7 +88,6 @@ class _ChewiePlayerState extends State<Chewie> {
       controller: _controller,
       onExpandCollapse: () => _pushFullScreenWidget(context),
       aspectRatio: widget.aspectRatio ?? _calculateAspectRatio(context),
-      cupertinoProgressColors: widget.cupertinoProgressColors,
       materialProgressColors: widget.materialProgressColors,
       placeholder: widget.placeholder,
       autoPlay: widget.autoPlay,
@@ -123,7 +117,6 @@ class _ChewiePlayerState extends State<Chewie> {
           aspectRatio: widget.aspectRatio ?? _calculateAspectRatio(context),
           fullScreen: true,
           isLive: widget.isLive,
-          cupertinoProgressColors: widget.cupertinoProgressColors,
           materialProgressColors: widget.materialProgressColors,
         ),
       ),
